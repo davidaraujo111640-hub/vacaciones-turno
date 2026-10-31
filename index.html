@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vacaciones del Turno</title>
 <meta name="theme-color" content="#1f6f5c">
+<script>try{const t=localStorage.getItem("vt-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -50,6 +51,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
 @media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -85,7 +87,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 
 <div class="wrap">
   <header>
-    <h1>Vacaciones del Turno</h1>
+    <div class="top"><h1>Vacaciones del Turno</h1><button class="btn ghost" id="themeBtn" type="button"></button></div>
     <p class="sub">Cadencia 6 tardes · 6 libres · 6 mañanas · 6 libres, desde el 5 de noviembre de 2026. Elige tu nombre y el tipo de día (vacaciones, AP, Navidad, Semana Santa u otro) y pulsa un día de trabajo para pedirlo. Vuelve a pulsarlo para retirarlo.</p>
   </header>
 
@@ -237,6 +239,11 @@ renderAll();
   db.collection("requests").onSnapshot(s=>{reqs=map(s);ok();renderAll();},err);
   db.collection("log").onSnapshot(s=>{logs=map(s);renderSide();},err);
 })();
+const themeBtn=document.getElementById("themeBtn");
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;};
+const paintTheme=()=>{const d=isDark();themeBtn.textContent=d?"☀️ Modo claro":"🌙 Modo oscuro";document.querySelector('meta[name="theme-color"]').content=d?"#121816":"#1f6f5c";};
+themeBtn.onclick=()=>{const t=isDark()?"light":"dark";document.documentElement.dataset.theme=t;try{localStorage.setItem("vt-theme",t)}catch(e){}paintTheme();};
+paintTheme();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
