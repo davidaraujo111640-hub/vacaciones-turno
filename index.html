@@ -3,11 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>:root{color-scheme:light}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Vacaciones del Turno</title>
+<meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vacaciones">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
-<title>Vacaciones del Turno</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
 /* Layout: toolbar de compañeros arriba, calendario mensual del cuadrante, panel lateral con resumen e historial */
@@ -206,19 +213,31 @@ document.getElementById("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;vie
 document.getElementById("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal();};
 renderAll();
 
-(async()=>{
+const firebaseConfig = {
+  apiKey: "AIzaSyA9K7OsgvH0jZSq5s1g4sfuZBb5c5LnvF4",
+  authDomain: "vacaciones-del-turno.firebaseapp.com",
+  projectId: "vacaciones-del-turno",
+  storageBucket: "vacaciones-del-turno.firebasestorage.app",
+  messagingSenderId: "940110369965",
+  appId: "1:940110369965:web:d8e4945fd920a0a78da224"
+};
+// La lista del turno se cambia aquí, en el código
+people = [["lara","Lara"],["udyki","Udyki"],["jaime","Jaime"],["juanjo","Juanjo"],["carmen","Carmen"],["laura","Laura"],["soledad","Soledad"],["jorge","Jorge"],["valdi","Valdi"],["antonio","Antonio"],["guillermo","Guillermo"],["alvaro","Álvaro"]]
+  .map(([id,name],i)=>({id,name,color:COLORS[i%COLORS.length]}));
+if(sel&&!people.some(p=>p.id===sel)) sel=null;
+renderAll();
+(()=>{
   const st=document.getElementById("status");
-  db = window.claude ? await window.claude.use("db") : null;
-  if(!db){st.textContent="Inicia sesión en Claude para ver y guardar las peticiones compartidas.";return;}
-  const timer=setTimeout(()=>st.textContent="Tardando en cargar…",10000);
+  try{ firebase.initializeApp(firebaseConfig); db=firebase.firestore(); }
+  catch(e){ st.textContent="No se pudo conectar: "+e.message; return; }
+  const timer=setTimeout(()=>st.textContent="Tardando en cargar… revisa tu conexión",10000);
   const map=s=>s.docs.map(d=>({id:d.id,...d.data()}));
   const ok=()=>{clearTimeout(timer);st.textContent="Sincronizado en tiempo real";};
   const err=e=>{clearTimeout(timer);st.textContent="Error al cargar: "+(e.message||e.code);};
-  db.collection("people").onSnapshot(s=>{people=map(s).sort((a,b)=>a.at-b.at);if(sel&&!people.some(p=>p.id===sel))sel=null;ok();renderAll();},err);
   db.collection("requests").onSnapshot(s=>{reqs=map(s);ok();renderAll();},err);
   db.collection("log").onSnapshot(s=>{logs=map(s);renderSide();},err);
 })();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
-
 </body>
 </html>

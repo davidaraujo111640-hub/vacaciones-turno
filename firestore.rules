@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Días pedidos: cualquiera puede ver, pedir, cambiar o retirar
+    match /requests/{id} {
+      allow read: if true;
+      allow delete: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['person', 'date', 'type', 'at'])
+        && request.resource.data.person is string && request.resource.data.person.size() < 30
+        && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.type in ['V', 'AP', 'NAV', 'SS', 'OTRO'];
+    }
+    // Historial: se puede leer y añadir, pero no borrar ni modificar
+    match /log/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['person', 'date', 'type', 'action', 'at'])
+        && request.resource.data.action in ['pide', 'cambia', 'retira'];
+    }
+  }
+}
