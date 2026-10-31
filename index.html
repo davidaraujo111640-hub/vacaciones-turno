@@ -64,6 +64,14 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .day.empty{background:transparent}
 .day.today{border-color:var(--fg)}
 .dn{display:flex;justify-content:space-between;font-weight:700;font-variant-numeric:tabular-nums}
+.dn{min-width:0;overflow:hidden;gap:4px}
+.sh .short{display:none}
+@media (max-width:600px){
+  .dn{flex-direction:column;align-items:flex-start;gap:0}
+  .sh .long{display:none}.sh .short{display:inline;font-size:.72rem}
+  .day{padding:4px 3px}
+  .grid{gap:3px}
+}
 .sh{font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .T .sh{color:var(--tarde)}.M .sh{color:var(--manana)}.L .sh{color:var(--muted)}
 .tags{display:flex;flex-wrap:wrap;gap:2px}
@@ -175,7 +183,7 @@ function renderCal(){
   for(let d=1;d<=n;d++){
     const s=shift(y,m,d), k=key(y,m,d), work=s!=="L";
     const cell=el(work?"button":"div",{className:`day ${s}${k===tk?" today":""}`});
-    const head=el("div",{className:"dn"}); head.append(el("span",{},d),el("span",{className:"sh"},s==="T"?"Tarde":s==="M"?"Mañana":"Libre"));
+    const head=el("div",{className:"dn"}); head.append(el("span",{},d),(()=>{const x=el("span",{className:"sh"});x.append(el("span",{className:"long"},s==="T"?"Tarde":s==="M"?"Mañana":"Libre"),el("span",{className:"short"},s));return x;})());
     cell.append(head);
     const here=reqs.filter(r=>r.date===k), tags=el("div",{className:"tags"});
     const pend=[...pending.values()].filter(q=>q.date===k);
