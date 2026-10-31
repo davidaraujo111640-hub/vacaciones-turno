@@ -85,8 +85,8 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .T .sh{color:var(--tarde)}.M .sh{color:var(--manana)}.L .sh{color:var(--muted)}
 .tags{display:flex;flex-wrap:wrap;gap:2px}
 .tag{font-size:.68rem;padding:1px 5px;border-radius:4px;color:#fff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tag:not([data-t="V"]){background-image:repeating-linear-gradient(45deg,transparent 0 4px,rgba(255,255,255,.28) 4px 8px)}
-.tag:not([data-t="V"])::after{content:" · " attr(data-t);font-weight:700}
+.tag[data-l]:not([data-l=""]){background-image:repeating-linear-gradient(45deg,transparent 0 4px,rgba(255,255,255,.28) 4px 8px)}
+.tag[data-l]:not([data-l=""])::after{content:" · " attr(data-l);font-weight:700}
 .tag.pend{outline:2px dashed var(--fg);outline-offset:-2px;opacity:.75}
 .tag.gone{text-decoration:line-through;opacity:.45}
 .day.haspend{border-color:var(--fg);border-style:dashed}
@@ -133,7 +133,7 @@ body.pending .wrap{padding-bottom:110px}
     <select id="who"><option value="">Todos (ver a todo el turno)</option></select>
     <span id="whoDot" style="width:14px;height:14px;border-radius:50%;display:inline-block" hidden></span>
     <label for="kind" style="font-weight:700">Tipo de día</label>
-    <select id="kind"><option value="V">Vacaciones</option><option value="AP">AP (asuntos propios)</option><option value="NAV">Navidad</option><option value="SS">Semana Santa</option><option value="OTRO">Otro</option></select>
+    <select id="kind"><option value="V26">Vacaciones 2026</option><option value="V27">Vacaciones 2027</option><option value="AP26">AP 2026</option><option value="AP27">AP 2027</option><option value="NAV">Navidad</option><option value="SS">Semana Santa</option><option value="OTRO">Otro</option></select>
     <span class="hint" id="status">Conectando…</span>
     <button class="linkbtn" id="adminBtn" type="button">Acceso Lara</button>
   </div>
@@ -164,7 +164,8 @@ body.pending .wrap{padding-bottom:110px}
           <button class="linkbtn" id="logoutBtn" type="button" style="margin-top:10px">Cerrar sesión</button>
         </div>
       </section>
-      <section class="card"><h2 id="sumTitle">Días pedidos</h2><div id="summary" style="margin-top:8px"></div></section>
+      <section class="card"><h2 id="sumTitle2026">Días pedidos 2026</h2><div id="summary2026" style="margin-top:8px"></div></section>
+      <section class="card"><h2 id="sumTitle2027">Días pedidos 2027</h2><div id="summary2027" style="margin-top:8px"></div></section>
       <section class="card"><h2>Historial</h2><div class="list log" id="log" style="margin-top:8px"></div></section>
     </aside>
   </div>
@@ -195,10 +196,13 @@ function shift(y,m,d){
 const key = (y,m,d)=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const pName = id => (people.find(p=>p.id===id)||{}).name || "¿?";
 const pColor = id => (people.find(p=>p.id===id)||{}).color || "#777";
-const TYPES = {V:"Vacaciones",AP:"AP",NAV:"Navidad",SS:"Semana Santa",OTRO:"Otro"};
-const SHORT = {V:"vac.",AP:"AP",NAV:"Nav.",SS:"S. Santa",OTRO:"otro"};
-const typeName = r => TYPES[r.type||"V"]||"Vacaciones";
-const tally = list => { const c={}; list.forEach(r=>{const t=r.type||"V";c[t]=(c[t]||0)+1;}); const s=Object.keys(TYPES).filter(t=>c[t]).map(t=>`${c[t]} ${SHORT[t]}`).join(" · "); return s||"0"; };
+const TYPES = {V26:"Vacaciones 2026",V27:"Vacaciones 2027",AP26:"AP 2026",AP27:"AP 2027",NAV:"Navidad",SS:"Semana Santa",OTRO:"Otro"};
+const SHORT = {V26:"vac.",V27:"vac.",AP26:"AP",AP27:"AP",NAV:"Nav.",SS:"S. Santa",OTRO:"otro"};
+const LABEL = {V26:"",V27:"V27",AP26:"AP",AP27:"AP27",NAV:"NAV",SS:"SS",OTRO:"OTRO"};
+const norm = t => ({V:"V26",AP:"AP26"})[t] || t || "V26"; // los días antiguos (V/AP) son de 2026
+const typeName = r => TYPES[norm(r.type)]||"Vacaciones 2026";
+const yearOf = r => { const t=norm(r.type); if(t.endsWith("26"))return 2026; if(t.endsWith("27"))return 2027; const y=+r.date.slice(0,4); return t==="NAV"&&r.date.slice(5,7)==="01"?y-1:y; }; // la Navidad de enero cuenta para el año anterior
+const tally = list => { const c={}; list.forEach(r=>{const t=norm(r.type);c[t]=(c[t]||0)+1;}); const s=Object.keys(TYPES).filter(t=>c[t]).map(t=>`${c[t]} ${SHORT[t]}`).join(" · "); return s||"0"; };
 const fmt = k => { const [y,m,d]=k.split("-"); return `${+d} ${MONTHS[m-1].slice(0,3)} ${y}`; };
 function toast(t){const e=document.getElementById("toast");e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2200);}
 function el(tag,attrs={},txt){const e=document.createElement(tag);Object.assign(e,attrs);if(txt!=null)e.textContent=txt;return e;}
@@ -227,8 +231,8 @@ function renderCal(){
     const here=reqs.filter(r=>r.date===k), tags=el("div",{className:"tags"});
     const pend=[...pending.values()].filter(q=>q.date===k);
     if(pend.length) cell.classList.add("haspend");
-    here.filter(r=>!sel||r.person===sel).forEach(r=>{const q=pending.get(r.id);if(q&&q.type)return;const t=el("span",{className:"tag"+(q?" gone":"")+(isOk(r)?" ok":""),title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.t=r.type||"V";t.style.background=pColor(r.person);tags.append(t);});
-    pend.filter(q=>q.type).forEach(q=>{const t=el("span",{className:"tag pend",title:`${pName(q.person)} · ${typeName(q)} (sin confirmar)`},pName(q.person));t.dataset.t=q.type;t.style.background=pColor(q.person);tags.append(t);});
+    here.filter(r=>!sel||r.person===sel).forEach(r=>{const q=pending.get(r.id);if(q&&q.type)return;const t=el("span",{className:"tag"+(q?" gone":"")+(isOk(r)?" ok":""),title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.l=LABEL[norm(r.type)];t.style.background=pColor(r.person);tags.append(t);});
+    pend.filter(q=>q.type).forEach(q=>{const t=el("span",{className:"tag pend",title:`${pName(q.person)} · ${typeName(q)} (sin confirmar)`},pName(q.person));t.dataset.l=LABEL[norm(q.type)];t.style.background=pColor(q.person);tags.append(t);});
     cell.append(tags);
     if(sel&&here.length>1){const c=el("span",{className:"count",title:`${here.length} piden este día`},`${here.length}`);c.append(el("span",{className:"cl"}," piden"));cell.append(c);}
     if(work){cell.onclick=()=>toggle(k);cell.setAttribute("aria-label",`${d} ${MONTHS[m]}, ${s==="T"?"tarde":"mañana"}, ${here.length} peticiones`);}
@@ -237,18 +241,20 @@ function renderCal(){
 }
 
 function renderSide(){
-  const sum=document.getElementById("summary"); sum.replaceChildren();
-  if(sel){
-    document.getElementById("sumTitle").textContent=`Días de ${pName(sel)}`;
-    const mine=reqs.filter(r=>r.person===sel).sort((a,b)=>a.date.localeCompare(b.date));
-    sum.append(el("div",{className:"stat"},`Total: ${mine.length} días (${tally(mine)})`));
-    if(!mine.length) sum.append(el("p",{className:"hint"},"No tiene días pedidos. Pulsa un día de trabajo en el calendario."));
-    mine.forEach(r=>{const [Y,M,D]=r.date.split("-").map(Number);const row=el("div",{className:"stat"});row.append(el("span",{},`${fmt(r.date)} · ${shift(Y,M-1,D)==="T"?"tarde":"mañana"} · ${typeName(r)}`));if(isOk(r))row.firstChild.append(el("span",{className:"okmark"}," ✓ confirmado"));const x=el("button",{className:"del"},"Retirar");x.onclick=()=>removeReq(r);row.append(x);sum.append(row);});
-  }else{
-    document.getElementById("sumTitle").textContent="Días pedidos";
-    if(!people.length) sum.append(el("p",{className:"hint"},"Cargando la lista del turno…"));
-    people.forEach(p=>{const row=el("div",{className:"stat"});const n=el("span");const dot=el("span",{className:"dot"});n.append(p.name);row.append(n,el("b",{},tally(reqs.filter(r=>r.person===p.id))));row.style.borderLeft=`4px solid ${p.color}`;row.style.paddingLeft="8px";sum.append(row);});
-  }
+  [2026,2027].forEach(Y=>{
+    const sum=document.getElementById("summary"+Y); sum.replaceChildren();
+    const all=reqs.filter(r=>yearOf(r)===Y);
+    if(sel){
+      document.getElementById("sumTitle"+Y).textContent=`Días de ${pName(sel)} · ${Y}`;
+      const mine=all.filter(r=>r.person===sel).sort((a,b)=>a.date.localeCompare(b.date));
+      sum.append(el("div",{className:"stat"},`Total: ${mine.length} días (${tally(mine)})`));
+      if(!mine.length) sum.append(el("p",{className:"hint"},`No tiene días pedidos de ${Y}.`));
+      mine.forEach(r=>{const [YY,M,D]=r.date.split("-").map(Number);const row=el("div",{className:"stat"});row.append(el("span",{},`${fmt(r.date)} · ${shift(YY,M-1,D)==="T"?"tarde":"mañana"} · ${typeName(r)}`));if(isOk(r))row.firstChild.append(el("span",{className:"okmark"}," ✓ confirmado"));const x=el("button",{className:"del"},"Retirar");x.onclick=()=>removeReq(r);row.append(x);sum.append(row);});
+    }else{
+      document.getElementById("sumTitle"+Y).textContent=`Días pedidos ${Y}`;
+      people.forEach(p=>{const row=el("div",{className:"stat"});const n=el("span");n.append(p.name);row.append(n,el("b",{},tally(all.filter(r=>r.person===p.id))));row.style.borderLeft=`4px solid ${p.color}`;row.style.paddingLeft="8px";sum.append(row);});
+    }
+  });
   const log=document.getElementById("log"); log.replaceChildren();
   const L=[...logs].sort((a,b)=>b.at-a.at).filter(l=>!sel||l.person===sel).slice(0,60);
   if(!L.length) log.append(el("p",{className:"hint"},"Aquí aparecerá quién pide o retira cada día."));
@@ -263,7 +269,7 @@ function toggle(k){
   if(Date.now()-swipeLock<400) return;
   if(!sel){toast("Primero elige tu nombre en el desplegable");return;}
   const id=`${sel}_${k}`, cur=reqs.find(r=>r.id===id), type=document.getElementById("kind").value;
-  const curType=cur?(cur.type||"V"):null, eff=pending.has(id)?pending.get(id).type:curType;
+  const curType=cur?norm(cur.type):null, eff=pending.has(id)?pending.get(id).type:curType;
   const want=eff===type?null:type;
   if(want===curType) pending.delete(id); else pending.set(id,{person:sel,date:k,type:want});
   renderAll(); renderPending();
@@ -289,7 +295,7 @@ document.getElementById("confirmBtn").onclick=async e=>{
         await db.collection("log").doc().set({person:q.person,date:q.date,type:q.type,action:cur?"cambia":"pide",at:Date.now()});
       }else{
         await db.doc(`requests/${id}`).delete();
-        await db.collection("log").doc().set({person:q.person,date:q.date,type:cur?(cur.type||"V"):"V",action:"retira",at:Date.now()});
+        await db.collection("log").doc().set({person:q.person,date:q.date,type:cur?norm(cur.type):"V26",action:"retira",at:Date.now()});
       }
       pending.delete(id); okN++;
     }catch(err){ toast("No se pudo guardar algún día: "+(err.message||err.code)); }
@@ -332,8 +338,8 @@ async function undo(l,r,btn){
   btn.disabled=true;
   try{
     if(l.action==="confirma") await db.doc(`confirmed/${r.id}`).delete();
-    else await db.doc(`requests/${l.person}_${l.date}`).set({person:l.person,date:l.date,type:l.type||"V",at:Date.now()});
-    await db.collection("log").doc().set({person:l.person,date:l.date,type:l.type||"V",action:"deshace",at:Date.now()});
+    else await db.doc(`requests/${l.person}_${l.date}`).set({person:l.person,date:l.date,type:norm(l.type),at:Date.now()});
+    await db.collection("log").doc().set({person:l.person,date:l.date,type:norm(l.type),action:"deshace",at:Date.now()});
     toast(l.action==="confirma"?`Confirmación deshecha: ${pName(l.person)} vuelve a estar pendiente`:`Denegación deshecha: el día de ${pName(l.person)} vuelve al calendario`);
   }catch(e){btn.disabled=false;toast("No se pudo deshacer: "+(e.code||e.message));}
 }
@@ -343,7 +349,7 @@ async function decide(r,yes,btn){
   try{
     if(yes){ await db.doc(`confirmed/${r.id}`).set({reqAt:r.at,at:Date.now()}); }
     else{ await db.doc(`requests/${r.id}`).delete(); if(confirmed[r.id]) await db.doc(`confirmed/${r.id}`).delete(); }
-    await db.collection("log").doc().set({person:r.person,date:r.date,type:r.type||"V",action:yes?"confirma":"deniega",at:Date.now()});
+    await db.collection("log").doc().set({person:r.person,date:r.date,type:norm(r.type),action:yes?"confirma":"deniega",at:Date.now()});
     toast(yes?`Confirmado: ${pName(r.person)} ${fmt(r.date)}`:`Denegado: ${pName(r.person)} ${fmt(r.date)}`);
   }catch(e){btn.disabled=false;toast("No tienes permiso o no se pudo guardar: "+(e.code||e.message));}
 }
