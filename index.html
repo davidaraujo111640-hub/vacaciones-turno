@@ -61,6 +61,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 @media (max-width:600px){.top{padding:12px 14px}.brand img{height:54px}h1{font-size:1.6rem}.top .btn.ghost{padding:6px 10px}.top .tl{display:none}.count .cl{display:none}.count{padding:0 5px;white-space:nowrap}}
 .top .btn.ghost{color:var(--hd-fg);border-color:rgba(255,255,255,.25)}
 .top h1{color:var(--hd-fg)}
+#cal{touch-action:pan-y}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -255,7 +256,9 @@ function renderSide(){
 }
 function renderAll(){renderPeople();renderCal();renderSide();}
 
+let swipeLock=0;
 function toggle(k){
+  if(Date.now()-swipeLock<400) return;
   if(!sel){toast("Primero elige tu nombre en el desplegable");return;}
   const id=`${sel}_${k}`, cur=reqs.find(r=>r.id===id), type=document.getElementById("kind").value;
   const curType=cur?(cur.type||"V"):null, eff=pending.has(id)?pending.get(id).type:curType;
@@ -324,6 +327,16 @@ document.getElementById("loginForm").onsubmit=async e=>{
   catch(err){ toast("Email o contraseña incorrectos"); }
 };
 document.getElementById("logoutBtn").onclick=()=>firebase.auth().signOut();
+(()=>{ // deslizar con el dedo sobre el calendario para cambiar de mes
+  const cal=document.getElementById("cal"); let x0=null,y0=null;
+  cal.addEventListener("touchstart",e=>{const t=e.touches[0];x0=t.clientX;y0=t.clientY;},{passive:true});
+  cal.addEventListener("touchend",e=>{
+    if(x0===null) return; const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+    if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.5) return;
+    swipeLock=Date.now(); document.getElementById(dx<0?"next":"prev").click();
+    cal.animate([{transform:`translateX(${dx<0?40:-40}px)`,opacity:.3},{transform:"none",opacity:1}],{duration:220,easing:"ease-out"});
+  },{passive:true});
+})();
 document.getElementById("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}renderCal();};
 document.getElementById("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal();};
 renderAll();
