@@ -396,9 +396,11 @@ renderAll();
   const map=s=>s.docs.map(d=>({id:d.id,...d.data()}));
   const ok=()=>{clearTimeout(timer);st.textContent="Sincronizado en tiempo real";};
   const err=e=>{clearTimeout(timer);st.textContent="Error al cargar: "+(e.message||e.code);};
-  db.collection("requests").onSnapshot(s=>{reqs=map(s);ok();renderAll();},err);
-  db.collection("log").onSnapshot(s=>{logs=map(s);renderSide();},err);
-  db.collection("confirmed").onSnapshot(s=>{confirmed={};s.docs.forEach(d=>confirmed[d.id]=d.data());renderAll();},err);
+  // si una suscripción se corta (sin cobertura, cambio de reglas…), se vuelve a conectar sola
+  const listen=(name,fn)=>db.collection(name).onSnapshot(fn,e=>{err(e);setTimeout(()=>listen(name,fn),3000);});
+  listen("requests",s=>{reqs=map(s);ok();renderAll();});
+  listen("log",s=>{logs=map(s);renderSide();});
+  listen("confirmed",s=>{confirmed={};s.docs.forEach(d=>confirmed[d.id]=d.data());ok();renderAll();});
   firebase.auth().onAuthStateChanged(u=>{admin=u;if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?`Revisión (${ADMINS[u.uid]||"responsable"})`:"Acceso responsables";renderReview();});
 })();
 const themeBtn=document.getElementById("themeBtn");
