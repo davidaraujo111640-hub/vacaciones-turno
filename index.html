@@ -82,6 +82,14 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .up .meta{color:var(--muted);font-size:.88rem}
 .uplist{display:grid;gap:8px;margin-top:8px}
 @media (max-width:600px){.ctag{font-size:.58rem;padding:0 3px}}
+.wheel{display:grid;gap:6px;margin-top:8px}
+.wrow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--libre-bg)}
+.wrow.next{background:color-mix(in srgb,var(--gold) 22%,var(--panel));outline:1.5px solid var(--gold)}
+.wrow.off{opacity:.5}
+.wrow .pos{font-family:var(--display);font-weight:700;font-size:1.1rem;text-align:center}
+.wrow .who{display:grid;min-width:0}
+.wrow .who button{all:unset;cursor:pointer;font-weight:700}
+.wrow .who span{color:var(--muted);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -190,6 +198,11 @@ body.pending .wrap{padding-bottom:110px}
       <section class="card"><h2 id="upTitle">Próximos cursos</h2><div class="uplist" id="cUpcoming"></div></section>
     </div>
     <aside class="side">
+      <section class="card" id="wheelCard" hidden>
+        <h2>Rueda de cursos</h2>
+        <p class="hint" style="margin:4px 0 0">Solo la ven los responsables. Quien recibe un curso pasa al final. Pulsa un nombre para seleccionarlo.</p>
+        <div class="wheel" id="wheel"></div>
+      </section>
       <section class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Cursos</h2><button class="btn sm" id="cNew" type="button" hidden>+ Nuevo curso</button></div>
         <form class="cform" id="cForm" hidden>
@@ -244,7 +257,7 @@ body.pending .wrap{padding-bottom:110px}
 const START = Date.UTC(2026,10,5); // 5 nov 2026, primer día de tardes
 const COLORS = ["#c0392b","#2471a3","#1e8449","#8e44ad","#d35400","#117a65","#b7950b","#a93226","#5b2c6f","#1a5276","#7d6608","#943126"];
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-let tab="vac", courses=[], assigns=[], editing=null, cview=null; // pestaña Cursos
+let tab="vac", courses=[], assigns=[], editing=null, cview=null, wheelOff=[]; // pestaña Cursos
 const pending = new Map(); // cambios sin confirmar: id -> {person,date,type|null}
 const ADMINS = {"2iFYWcnlWEQAWwqRqxWOoICzVtm1":"Lara","nqUXnklNkIQseGfMZSoUAOS1hMy1":"Udyki"}; // responsables que confirman y deniegan
 let confirmed = {}, admin = null;
@@ -490,7 +503,32 @@ function renderCursos(){
     else if(assigns.some(a=>a.date===k)) cell.onclick=()=>toast(assigns.filter(a=>a.date===k).map(a=>`${pName(a.person)}: ${(course(a.course)||{}).name||"?"}`).join(" · "));
     cal.append(cell);
   }
-  renderUpcoming(); renderCourseList();
+  renderUpcoming(); renderCourseList(); renderWheel();
+}
+function renderWheel(){
+  const card=document.getElementById("wheelCard"); card.hidden=!isAdmin(); if(card.hidden) return;
+  // por persona: cursos distintos recibidos y cuándo recibió el último
+  const stats=people.map(p=>{
+    const mine=assigns.filter(a=>a.person===p.id), byCourse={};
+    mine.forEach(a=>{byCourse[a.course]=Math.max(byCourse[a.course]||0,a.at||0);});
+    const ids=Object.keys(byCourse), lastId=ids.sort((a,b)=>byCourse[b]-byCourse[a])[0];
+    return {p,n:ids.length,last:lastId?byCourse[lastId]:0,lastCourse:lastId&&course(lastId),off:wheelOff.includes(p.id)};
+  });
+  // primero quien nunca ha recibido curso (en el orden del turno), después quien lo recibió hace más tiempo
+  const on=stats.filter(x=>!x.off).sort((a,b)=>a.last-b.last), off=stats.filter(x=>x.off);
+  const box=document.getElementById("wheel"); box.replaceChildren();
+  [...on,...off].forEach((x,i)=>{
+    const row=el("div",{className:"wrow"+(x.off?" off":i===0?" next":"")});
+    row.append(el("span",{className:"pos"},x.off?"–":String(i+1)));
+    const who=el("div",{className:"who"}), nb=el("button",{type:"button"},x.p.name);
+    nb.onclick=()=>{setSel(x.p.id);toast(`${x.p.name} seleccionado. Elige el curso y pulsa el día.`);};
+    who.append(nb,el("span",{},(i===0&&!x.off?"Le toca el siguiente · ":"")+(x.n?`${x.n} curso${x.n===1?"":"s"}`+(x.lastCourse?` · último: ${x.lastCourse.name}`:""):"sin cursos todavía")));
+    const b=el("button",{className:"linkbtn",type:"button"},x.off?"Volver a la rueda":"Quitar de la rueda");
+    b.onclick=async()=>{const next=x.off?wheelOff.filter(id=>id!==x.p.id):[...wheelOff,x.p.id];
+      try{await db.doc("settings/wheel").set({off:next,at:Date.now()});toast(x.off?`${x.p.name} vuelve a la rueda`:`${x.p.name} queda fuera de la rueda`);}
+      catch(e){toast("No se pudo guardar: "+(e.code||e.message));}};
+    row.append(who,b); box.append(row);
+  });
 }
 async function toggleAssign(k){
   if(Date.now()-swipeC<400) return;
@@ -603,7 +641,10 @@ renderAll();
   listen("confirmed",s=>{confirmed={};s.docs.forEach(d=>confirmed[d.id]=d.data());ok();renderAll();});
   listen("courses",s=>{courses=map(s);renderCursos();});
   listen("assignments",s=>{assigns=map(s);renderCursos();});
-  firebase.auth().onAuthStateChanged(u=>{admin=u;setTimeout(renderCursos);if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?`Revisión (${ADMINS[u.uid]||"responsable"})`:"Acceso responsables";renderReview();});
+  let wheelUnsub=null;
+firebase.auth().onAuthStateChanged(u=>{admin=u;setTimeout(renderCursos);
+  if(wheelUnsub){wheelUnsub();wheelUnsub=null;}
+  if(u&&ADMINS[u.uid]) wheelUnsub=db.doc("settings/wheel").onSnapshot(d=>{wheelOff=(d.exists&&d.data().off)||[];renderCursos();},()=>{});if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?`Revisión (${ADMINS[u.uid]||"responsable"})`:"Acceso responsables";renderReview();});
 })();
 const themeBtn=document.getElementById("themeBtn");
 const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;};

@@ -1,5 +1,5 @@
 // Guarda la página para que abra rápido; los datos siempre vienen de Firebase
-const CACHE = "vacaciones-v14";
+const CACHE = "vacaciones-v15";
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(["./", "index.html", "manifest.json", "icon-192.png", "logo.png"])).then(() => self.skipWaiting())));
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", e => {
