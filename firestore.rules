@@ -1,8 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function esLara() {
-      return request.auth != null && request.auth.uid == '2iFYWcnlWEQAWwqRqxWOoICzVtm1';
+    // Responsables que pueden confirmar y denegar: Lara y Udyki
+    function esResponsable() {
+      return request.auth != null
+        && request.auth.uid in ['2iFYWcnlWEQAWwqRqxWOoICzVtm1', 'nqUXnklNkIQseGfMZSoUAOS1hMy1'];
     }
     // Días pedidos: cualquiera puede ver, pedir, cambiar o retirar
     match /requests/{id} {
@@ -13,17 +15,20 @@ service cloud.firestore {
         && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && request.resource.data.type in ['V26', 'V27', 'AP26', 'AP27', 'NAV', 'SS', 'OTRO'];
     }
-    // Días confirmados: todos los ven, solo Lara confirma
+    // Días confirmados: todos los ven, solo los responsables confirman
     match /confirmed/{id} {
       allow read: if true;
-      allow write: if esLara();
+      allow write: if esResponsable();
     }
-    // Historial: se puede leer y añadir, pero no borrar ni modificar. Confirmar y denegar, solo Lara
+    // Historial: se puede leer y añadir, pero no borrar ni modificar.
+    // Confirmar, denegar y deshacer, solo los responsables, firmando con su propia cuenta
     match /log/{id} {
       allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(['person', 'date', 'type', 'action', 'at'])
-        && (request.resource.data.action in ['pide', 'cambia', 'retira']
-            || (request.resource.data.action in ['confirma', 'deniega', 'deshace'] && esLara()));
+      allow create: if (request.resource.data.keys().hasOnly(['person', 'date', 'type', 'action', 'at'])
+            && request.resource.data.action in ['pide', 'cambia', 'retira'])
+        || (request.resource.data.keys().hasOnly(['person', 'date', 'type', 'action', 'by', 'at'])
+            && request.resource.data.action in ['confirma', 'deniega', 'deshace']
+            && esResponsable() && request.resource.data.by == request.auth.uid);
     }
   }
 }
