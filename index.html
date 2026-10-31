@@ -89,6 +89,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .wrow .pos{font-family:var(--display);font-weight:700;font-size:1.1rem;text-align:center}
 .wrow .who{display:grid;min-width:0}
 .wrow .who button{all:unset;cursor:pointer;font-weight:700}
+.wdot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px;vertical-align:0}
 .wrow .who span{color:var(--muted);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
@@ -520,7 +521,7 @@ function renderWheel(){
   [...on,...off].forEach((x,i)=>{
     const row=el("div",{className:"wrow"+(x.off?" off":i===0?" next":"")});
     row.append(el("span",{className:"pos"},x.off?"–":String(i+1)));
-    const who=el("div",{className:"who"}), nb=el("button",{type:"button"},x.p.name);
+    const who=el("div",{className:"who"}), nb=el("button",{type:"button"}), dot=el("i",{className:"wdot"}); dot.style.background=x.p.color; nb.append(dot,x.p.name); row.style.borderLeft=`4px solid ${x.p.color}`;
     nb.onclick=()=>{setSel(x.p.id);toast(`${x.p.name} seleccionado. Elige el curso y pulsa el día.`);};
     who.append(nb,el("span",{},(i===0&&!x.off?"Le toca el siguiente · ":"")+(x.n?`${x.n} curso${x.n===1?"":"s"}`+(x.lastCourse?` · último: ${x.lastCourse.name}`:""):"sin cursos todavía")));
     const b=el("button",{className:"linkbtn",type:"button"},x.off?"Volver a la rueda":"Quitar de la rueda");
