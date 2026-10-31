@@ -61,7 +61,27 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 @media (max-width:600px){.top{padding:12px 14px}.brand img{height:54px}h1{font-size:1.6rem}.top .btn.ghost{padding:6px 10px}.top .tl{display:none}.count .cl{display:none}.count{padding:0 5px;white-space:nowrap}}
 .top .btn.ghost{color:var(--hd-fg);border-color:rgba(255,255,255,.25)}
 .top h1{color:var(--hd-fg)}
-#cal{touch-action:pan-y}
+#cal,#ccal{touch-action:pan-y}
+.tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;box-shadow:var(--shadow);width:max-content;max-width:100%}
+.tab{font:inherit;font-weight:600;border:0;background:transparent;color:var(--muted);padding:8px 18px;border-radius:9px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.col{display:grid;gap:18px;min-width:0;align-content:start}
+.day.out{opacity:.45}
+.ctag{font-size:.68rem;padding:1px 5px;border-radius:4px;color:#fff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.course{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:3px}
+.course:first-child{border-top:0}
+.course b{font-family:var(--display);font-size:1.05rem}
+.course .meta{color:var(--muted);font-size:.88rem}
+.course .acts{display:flex;gap:10px;margin-top:4px}
+.cform{display:grid;gap:8px;margin-top:10px}
+.cform label{font-size:.85rem;font-weight:600;color:var(--muted);display:grid;gap:3px}
+.cform input,.cform textarea{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg)}
+.cform .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.up{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--libre-bg);border-left:4px solid var(--gold)}
+.up .when{font-weight:700}
+.up .meta{color:var(--muted);font-size:.88rem}
+.uplist{display:grid;gap:8px;margin-top:8px}
+@media (max-width:600px){.ctag{font-size:.58rem;padding:0 3px}}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -128,17 +148,65 @@ body.pending .wrap{padding-bottom:110px}
     <div class="top"><div class="brand"><img src="logo.png" alt="Escudo G.O.R. Ciudad Lineal" width="54" height="68"><div><h1>V.T.</h1><span class="tagline">Vacaciones del turno</span></div></div><button class="btn ghost" id="themeBtn" type="button"></button></div>
   </header>
 
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabVac" aria-selected="true" type="button">Vacaciones</button>
+    <button class="tab" role="tab" id="tabCur" aria-selected="false" type="button">Cursos</button>
+  </div>
+
   <div class="bar">
     <label for="who" style="font-weight:700">¿Quién eres?</label>
     <select id="who"><option value="">Todos (ver a todo el turno)</option></select>
     <span id="whoDot" style="width:14px;height:14px;border-radius:50%;display:inline-block" hidden></span>
-    <label for="kind" style="font-weight:700">Tipo de día</label>
-    <select id="kind"><option value="V26">Vacaciones 2026</option><option value="V27">Vacaciones 2027</option><option value="AP26">AP 2026</option><option value="AP27">AP 2027</option><option value="NAV">Navidad</option><option value="SS">Semana Santa</option><option value="OTRO">Otro</option></select>
+    <label for="kind" class="only-vac" style="font-weight:700">Tipo de día</label>
+    <select id="kind" class="only-vac"><option value="V26">Vacaciones 2026</option><option value="V27">Vacaciones 2027</option><option value="AP26">AP 2026</option><option value="AP27">AP 2027</option><option value="NAV">Navidad</option><option value="SS">Semana Santa</option><option value="OTRO">Otro</option></select>
     <span class="hint" id="status">Conectando…</span>
     <button class="linkbtn" id="adminBtn" type="button">Acceso responsables</button>
   </div>
 
-  <div class="main">
+  <section class="card" id="loginCard" hidden>
+    <h2>Acceso responsables</h2>
+    <form class="login" id="loginForm">
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="Tu email" aria-label="Email">
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña">
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </section>
+
+  <div class="main" id="cursosView" hidden>
+    <div class="col">
+      <section class="card">
+        <div class="bar" id="cAssignBar" hidden style="margin-bottom:12px">
+          <label for="cCourse" style="font-weight:700">Curso</label>
+          <select id="cCourse"></select>
+          <span class="hint" id="cHint"></span>
+        </div>
+        <div class="calhead">
+          <button class="btn ghost" id="cprev" aria-label="Mes anterior">‹</button>
+          <h2 id="cmonth"></h2>
+          <button class="btn ghost" id="cnext" aria-label="Mes siguiente">›</button>
+        </div>
+        <div class="grid" id="ccal"></div>
+      </section>
+      <section class="card"><h2 id="upTitle">Próximos cursos</h2><div class="uplist" id="cUpcoming"></div></section>
+    </div>
+    <aside class="side">
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Cursos</h2><button class="btn sm" id="cNew" type="button" hidden>+ Nuevo curso</button></div>
+        <form class="cform" id="cForm" hidden>
+          <label>Nombre del curso<input id="fName" required maxlength="80"></label>
+          <div class="two"><label>Fecha de inicio<input id="fStart" type="date" required></label><label>Fecha de fin<input id="fEnd" type="date" required></label></div>
+          <label>Hora<input id="fTime" placeholder="09:00 - 14:00" maxlength="40"></label>
+          <label>Material necesario<textarea id="fMat" rows="2" maxlength="500"></textarea></label>
+          <label>Descripción<textarea id="fDesc" rows="3" maxlength="1000"></textarea></label>
+          <label>Otros<textarea id="fOther" rows="2" maxlength="500"></textarea></label>
+          <div style="display:flex;gap:8px"><button class="btn" type="submit" id="fSave">Guardar curso</button><button class="btn ghost" type="button" id="fCancel">Cancelar</button></div>
+        </form>
+        <div id="cList" style="margin-top:8px"></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="main only-vac" id="vacView">
     <section class="card">
       <div class="calhead">
         <button class="btn ghost" id="prev" aria-label="Mes anterior">‹</button>
@@ -151,11 +219,6 @@ body.pending .wrap{padding-bottom:110px}
     <aside class="side">
       <section class="card" id="adminCard" hidden>
         <h2>Revisión de días</h2>
-        <form class="login" id="loginForm" hidden>
-          <input id="loginEmail" type="email" autocomplete="username" placeholder="Tu email" aria-label="Email">
-          <input id="loginPass" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña">
-          <button class="btn" type="submit">Entrar</button>
-        </form>
         <div id="reviewBox" hidden>
           <p class="hint" style="margin:6px 0">Días pedidos pendientes de confirmar:</p>
           <div class="list" id="reviewList"></div>
@@ -181,6 +244,7 @@ body.pending .wrap{padding-bottom:110px}
 const START = Date.UTC(2026,10,5); // 5 nov 2026, primer día de tardes
 const COLORS = ["#c0392b","#2471a3","#1e8449","#8e44ad","#d35400","#117a65","#b7950b","#a93226","#5b2c6f","#1a5276","#7d6608","#943126"];
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+let tab="vac", courses=[], assigns=[], editing=null, cview=null; // pestaña Cursos
 const pending = new Map(); // cambios sin confirmar: id -> {person,date,type|null}
 const ADMINS = {"2iFYWcnlWEQAWwqRqxWOoICzVtm1":"Lara","nqUXnklNkIQseGfMZSoUAOS1hMy1":"Udyki"}; // responsables que confirman y deniegan
 let confirmed = {}, admin = null;
@@ -263,7 +327,7 @@ function renderSide(){
   L.forEach(l=>{const d=el("div",{className:l.action==="deniega"?"deny":""});d.append(el("span",{className:l.action==="pide"?"add":l.action==="confirma"?"conf":"rm"},VERB[l.action]||"· "),document.createTextNode(`${pName(l.person)} · ${fmt(l.date)}${l.type?" · "+typeName(l):""}`),el("time",{},new Date(l.at).toLocaleString("es-ES")+(["confirma","deniega","deshace"].includes(l.action)?` · por ${ADMINS[l.by]||"Lara"}`:"")));log.append(d);});
   renderReview();
 }
-function renderAll(){renderPeople();renderCal();renderSide();}
+function renderAll(){renderPeople();renderCal();renderSide();renderCursos();}
 
 let swipeLock=0;
 function toggle(k){
@@ -307,7 +371,7 @@ document.getElementById("confirmBtn").onclick=async e=>{
 };
 window.addEventListener("beforeunload",e=>{if(pending.size){e.preventDefault();e.returnValue="";}});
 function renderReview(){
-  document.getElementById("loginForm").hidden=!!admin;
+  if(admin) document.getElementById("loginCard").hidden=true;
   document.getElementById("reviewBox").hidden=!admin;
   if(!admin) return;
   const box=document.getElementById("reviewList"); box.replaceChildren();
@@ -354,7 +418,11 @@ async function decide(r,yes,btn){
     toast(yes?`Confirmado: ${pName(r.person)} ${fmt(r.date)}`:`Denegado: ${pName(r.person)} ${fmt(r.date)}`);
   }catch(e){btn.disabled=false;toast("No tienes permiso o no se pudo guardar: "+(e.code||e.message));}
 }
-document.getElementById("adminBtn").onclick=()=>{const c=document.getElementById("adminCard");c.hidden=!c.hidden;renderReview();if(!c.hidden)c.scrollIntoView({behavior:"smooth"});};
+document.getElementById("adminBtn").onclick=()=>{
+  if(!admin){const l=document.getElementById("loginCard");l.hidden=!l.hidden;if(!l.hidden)document.getElementById("loginEmail").focus();return;}
+  if(tab==="cur"){document.getElementById("cList").scrollIntoView({behavior:"smooth"});return;}
+  const c=document.getElementById("adminCard");c.hidden=!c.hidden;renderReview();if(!c.hidden)c.scrollIntoView({behavior:"smooth"});
+};
 document.getElementById("loginForm").onsubmit=async e=>{
   e.preventDefault();
   try{ await firebase.auth().signInWithEmailAndPassword(document.getElementById("loginEmail").value.trim(),document.getElementById("loginPass").value); document.getElementById("loginPass").value=""; }
@@ -374,6 +442,138 @@ document.getElementById("logoutBtn").onclick=()=>firebase.auth().signOut();
 document.getElementById("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}renderCal();};
 document.getElementById("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal();};
 renderAll();
+
+// ===== Cursos =====
+const isAdmin=()=>!!admin&&!!ADMINS[admin.uid];
+const course=id=>courses.find(c=>c.id===id);
+const dshort=k=>{const [y,m,d]=k.split("-").map(Number);return `${["dom","lun","mar","mié","jue","vie","sáb"][new Date(y,m-1,d).getDay()]} ${d} ${MONTHS[m-1].slice(0,3)}`;};
+function setTab(t){
+  tab=t;
+  document.getElementById("tabVac").setAttribute("aria-selected",t==="vac");
+  document.getElementById("tabCur").setAttribute("aria-selected",t==="cur");
+  document.querySelectorAll(".only-vac").forEach(e=>e.hidden=t!=="vac");
+  document.getElementById("cursosView").hidden=t!=="cur";
+  document.querySelector(".tagline").textContent=t==="vac"?"Vacaciones del turno":"Cursos del turno";
+  try{localStorage.setItem("vt-tab",t)}catch(e){}
+  if(t==="cur"){document.getElementById("confirmBar").hidden=true;renderCursos();}else renderPending();
+}
+document.getElementById("tabVac").onclick=()=>setTab("vac");
+document.getElementById("tabCur").onclick=()=>setTab("cur");
+
+function renderCursos(){
+  if(tab!=="cur") return;
+  if(!cview) cview={...view};
+  const adm=isAdmin();
+  // selector de curso (solo responsables)
+  const bar=document.getElementById("cAssignBar"); bar.hidden=!adm;
+  const cs=document.getElementById("cCourse"), prevVal=cs.value; cs.replaceChildren();
+  const sorted=[...courses].sort((a,b)=>a.start.localeCompare(b.start));
+  sorted.forEach(c=>cs.append(el("option",{value:c.id},`${c.name} (${fmt(c.start)} – ${fmt(c.end)})`)));
+  if(sorted.some(c=>c.id===prevVal)) cs.value=prevVal;
+  const cur=course(cs.value);
+  document.getElementById("cHint").textContent=!courses.length?"Primero da de alta un curso.":!sel?"Elige el compañero en «¿Quién eres?» y pulsa un día.":"Pulsa un día dentro de las fechas del curso para apuntar o quitar.";
+  // calendario
+  const {y,m}=cview; document.getElementById("cmonth").textContent=`${MONTHS[m]} ${y}`;
+  const cal=document.getElementById("ccal"); cal.replaceChildren();
+  ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].forEach(d=>cal.append(el("div",{className:"dow"},d)));
+  const off=(new Date(y,m,1).getDay()+6)%7, n=new Date(y,m+1,0).getDate();
+  for(let i=0;i<off;i++) cal.append(el("div",{className:"day empty"}));
+  const t=new Date(), tk=key(t.getFullYear(),t.getMonth(),t.getDate());
+  for(let d=1;d<=n;d++){
+    const s=shift(y,m,d), k=key(y,m,d), inRange=cur&&k>=cur.start&&k<=cur.end;
+    const cell=el(adm?"button":"div",{className:`day ${s}${k===tk?" today":""}${adm&&cur&&!inRange?" out":""}`});
+    const head=el("div",{className:"dn"}); const sh=el("span",{className:"sh"}); sh.append(el("span",{className:"long"},s==="T"?"Tarde":s==="M"?"Mañana":"Libre"),el("span",{className:"short"},s)); head.append(el("span",{},d),sh); cell.append(head);
+    const tags=el("div",{className:"tags"});
+    assigns.filter(a=>a.date===k&&(!sel||a.person===sel)).forEach(a=>{const c=course(a.course);const tg=el("span",{className:"ctag",title:`${pName(a.person)} · ${c?c.name:"curso borrado"}`},`${pName(a.person)} · ${c?c.name:"?"}`);tg.style.background=pColor(a.person);tags.append(tg);});
+    cell.append(tags);
+    if(adm) cell.onclick=()=>toggleAssign(k);
+    else if(assigns.some(a=>a.date===k)) cell.onclick=()=>toast(assigns.filter(a=>a.date===k).map(a=>`${pName(a.person)}: ${(course(a.course)||{}).name||"?"}`).join(" · "));
+    cal.append(cell);
+  }
+  renderUpcoming(); renderCourseList();
+}
+async function toggleAssign(k){
+  if(Date.now()-swipeC<400) return;
+  if(!sel){toast("Elige primero el compañero en «¿Quién eres?»");return;}
+  const c=course(document.getElementById("cCourse").value);
+  if(!c){toast("Da de alta un curso primero");return;}
+  if(k<c.start||k>c.end){toast(`«${c.name}» es del ${fmt(c.start)} al ${fmt(c.end)}`);return;}
+  const id=`${sel}_${k}_${c.id}`, exists=assigns.some(a=>a.id===id);
+  try{
+    if(exists){await db.doc(`assignments/${id}`).delete();toast(`Quitado: ${pName(sel)} · ${c.name} · ${fmt(k)}`);}
+    else{await db.doc(`assignments/${id}`).set({person:sel,date:k,course:c.id,at:Date.now()});toast(`Apuntado: ${pName(sel)} · ${c.name} · ${fmt(k)}`);}
+  }catch(e){toast("No se pudo guardar: "+(e.code||e.message));}
+}
+function renderUpcoming(){
+  const box=document.getElementById("cUpcoming"); box.replaceChildren();
+  const t=new Date(), tk=key(t.getFullYear(),t.getMonth(),t.getDate());
+  document.getElementById("upTitle").textContent=sel?`Próximos cursos de ${pName(sel)}`:"Próximos cursos";
+  const list=assigns.filter(a=>a.date>=tk&&(!sel||a.person===sel)).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,20);
+  if(!list.length){box.append(el("p",{className:"hint"},sel?`${pName(sel)} no tiene cursos próximos.`:"No hay cursos próximos apuntados."));return;}
+  list.forEach(a=>{
+    const c=course(a.course)||{name:"Curso borrado"}, it=el("div",{className:"up"});
+    const days=Math.round((new Date(a.date)-new Date(tk))/864e5);
+    const cuando=days===0?"Hoy":days===1?"Mañana":`En ${days} días`;
+    it.append(el("span",{className:"when"},`${sel?"Te toca":pName(a.person)+" ·"} ${dshort(a.date)} · ${c.name}`));
+    it.append(el("span",{className:"meta"},[cuando,c.time&&`Hora: ${c.time}`,c.material&&`Material: ${c.material}`].filter(Boolean).join(" · ")));
+    box.append(it);
+  });
+}
+function renderCourseList(){
+  const adm=isAdmin(), box=document.getElementById("cList"); box.replaceChildren();
+  document.getElementById("cNew").hidden=!adm||!document.getElementById("cForm").hidden;
+  if(!courses.length){box.append(el("p",{className:"hint"},adm?"Aún no hay cursos. Pulsa «+ Nuevo curso» para dar de alta el primero.":"Aún no hay cursos dados de alta."));return;}
+  [...courses].sort((a,b)=>a.start.localeCompare(b.start)).forEach(c=>{
+    const it=el("div",{className:"course"});
+    it.append(el("b",{},c.name),el("span",{className:"meta"},`Del ${fmt(c.start)} al ${fmt(c.end)}${c.time?" · "+c.time:""}`));
+    if(c.material) it.append(el("span",{},`Material: ${c.material}`));
+    if(c.desc) it.append(el("span",{},c.desc));
+    if(c.other) it.append(el("span",{className:"meta"},`Otros: ${c.other}`));
+    const n=assigns.filter(a=>a.course===c.id).length; it.append(el("span",{className:"meta"},`${n} apuntado${n===1?"":"s"}`));
+    if(adm){
+      const acts=el("div",{className:"acts"}), e=el("button",{className:"linkbtn",type:"button"},"Editar"), d=el("button",{className:"del",type:"button"},"Borrar");
+      e.onclick=()=>openForm(c);
+      d.onclick=async()=>{
+        if(d.dataset.armed!=="1"){d.dataset.armed="1";d.textContent=`¿Borrar también sus ${n} apuntados?`;setTimeout(()=>{d.dataset.armed="";d.textContent="Borrar";},4000);return;}
+        try{for(const a of assigns.filter(a=>a.course===c.id)) await db.doc(`assignments/${a.id}`).delete(); await db.doc(`courses/${c.id}`).delete(); toast("Curso borrado");}
+        catch(err){toast("No se pudo borrar: "+(err.code||err.message));}
+      };
+      acts.append(e,d); it.append(acts);
+    }
+    box.append(it);
+  });
+}
+const F=id=>document.getElementById(id);
+function openForm(c){
+  editing=c?c.id:null;
+  F("fName").value=c?c.name:""; F("fStart").value=c?c.start:""; F("fEnd").value=c?c.end:"";
+  F("fTime").value=c?c.time||"":""; F("fMat").value=c?c.material||"":""; F("fDesc").value=c?c.desc||"":""; F("fOther").value=c?c.other||"":"";
+  F("fSave").textContent=c?"Guardar cambios":"Dar de alta";
+  F("cForm").hidden=false; F("cNew").hidden=true; F("fName").focus();
+}
+F("cNew").onclick=()=>openForm(null);
+F("fCancel").onclick=()=>{F("cForm").hidden=true;editing=null;renderCourseList();};
+F("cForm").onsubmit=async e=>{
+  e.preventDefault();
+  const d={name:F("fName").value.trim(),start:F("fStart").value,end:F("fEnd").value,time:F("fTime").value.trim(),material:F("fMat").value.trim(),desc:F("fDesc").value.trim(),other:F("fOther").value.trim(),at:Date.now()};
+  if(!d.name||!d.start||!d.end){toast("Pon el nombre y las fechas de inicio y fin");return;}
+  if(d.end<d.start){toast("La fecha de fin no puede ser anterior a la de inicio");return;}
+  if(editing){const out=assigns.filter(a=>a.course===editing&&(a.date<d.start||a.date>d.end)).length;if(out){toast(`Hay ${out} apuntado${out>1?"s":""} fuera de las nuevas fechas. Quítalos antes de cambiar las fechas.`);return;}}
+  try{
+    await db.doc(`courses/${editing||db.collection("courses").doc().id}`).set(d);
+    toast(editing?"Curso actualizado":"Curso dado de alta"); F("cForm").hidden=true; editing=null;
+    cview.y=+d.start.slice(0,4); cview.m=+d.start.slice(5,7)-1; renderCursos();
+  }catch(err){toast("No se pudo guardar: "+(err.code||err.message));}
+};
+F("cCourse").onchange=()=>{const c=course(F("cCourse").value);if(c){cview.y=+c.start.slice(0,4);cview.m=+c.start.slice(5,7)-1;}renderCursos();};
+F("cprev").onclick=()=>{cview.m--;if(cview.m<0){cview.m=11;cview.y--}renderCursos();};
+F("cnext").onclick=()=>{cview.m++;if(cview.m>11){cview.m=0;cview.y++}renderCursos();};
+(()=>{ const cal=F("ccal"); let x0=null,y0=null;
+  cal.addEventListener("touchstart",e=>{const t=e.touches[0];x0=t.clientX;y0=t.clientY;},{passive:true});
+  cal.addEventListener("touchend",e=>{if(x0===null)return;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;x0=null;
+    if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy)*1.5)return; swipeC=Date.now(); F(dx<0?"cnext":"cprev").click();},{passive:true});
+})();
+let swipeC=0;
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9K7OsgvH0jZSq5s1g4sfuZBb5c5LnvF4",
@@ -401,13 +601,16 @@ renderAll();
   listen("requests",s=>{reqs=map(s);ok();renderAll();});
   listen("log",s=>{logs=map(s);renderSide();});
   listen("confirmed",s=>{confirmed={};s.docs.forEach(d=>confirmed[d.id]=d.data());ok();renderAll();});
-  firebase.auth().onAuthStateChanged(u=>{admin=u;if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?`Revisión (${ADMINS[u.uid]||"responsable"})`:"Acceso responsables";renderReview();});
+  listen("courses",s=>{courses=map(s);renderCursos();});
+  listen("assignments",s=>{assigns=map(s);renderCursos();});
+  firebase.auth().onAuthStateChanged(u=>{admin=u;setTimeout(renderCursos);if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?`Revisión (${ADMINS[u.uid]||"responsable"})`:"Acceso responsables";renderReview();});
 })();
 const themeBtn=document.getElementById("themeBtn");
 const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;};
 const paintTheme=()=>{const d=isDark();themeBtn.replaceChildren(el("span",{},d?"☀️":"🌙"),el("span",{className:"tl"},d?" Modo claro":" Modo oscuro"));themeBtn.setAttribute("aria-label",d?"Modo claro":"Modo oscuro");document.querySelector('meta[name="theme-color"]').content=d?"#0b1222":"#0e1b33";};
 themeBtn.onclick=()=>{const t=isDark()?"light":"dark";document.documentElement.dataset.theme=t;try{localStorage.setItem("vt-theme",t)}catch(e){}paintTheme();};
 paintTheme();
+try{if(localStorage.getItem("vt-tab")==="cur")setTab("cur")}catch(e){}
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>

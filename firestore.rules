@@ -20,6 +20,15 @@ service cloud.firestore {
       allow read: if true;
       allow write: if esResponsable();
     }
+    // Cursos y quién va a cada uno: todos los ven, solo los responsables los modifican
+    match /courses/{id} {
+      allow read: if true;
+      allow write: if esResponsable();
+    }
+    match /assignments/{id} {
+      allow read: if true;
+      allow write: if esResponsable();
+    }
     // Historial: se puede leer y añadir, pero no borrar ni modificar.
     // Confirmar, denegar y deshacer, solo los responsables, firmando con su propia cuenta
     match /log/{id} {
