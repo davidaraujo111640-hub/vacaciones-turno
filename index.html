@@ -315,7 +315,7 @@ function renderReview(){
 }
 function renderRecent(){
   const box=document.getElementById("recentList"); box.replaceChildren();
-  const dec=logs.filter(l=>l.action==="confirma"||l.action==="deniega").sort((a,b)=>b.at-a.at).slice(0,10);
+  const dec=logs.filter(l=>l.action==="confirma"||l.action==="deniega").sort((a,b)=>b.at-a.at).slice(0,30);
   if(!dec.length){box.append(el("p",{className:"hint"},"Aún no has confirmado ni denegado ningún día."));return;}
   dec.forEach(l=>{
     const id=`${l.person}_${l.date}`, r=reqs.find(x=>x.id===id);
