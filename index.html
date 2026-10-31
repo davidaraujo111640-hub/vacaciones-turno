@@ -256,7 +256,8 @@ body.pending .wrap{padding-bottom:110px}
 
 <script>
 const START = Date.UTC(2026,10,5); // 5 nov 2026, primer día de tardes
-const COLORS = ["#c0392b","#2471a3","#1e8449","#8e44ad","#d35400","#117a65","#b7950b","#a93226","#5b2c6f","#1a5276","#7d6608","#943126"];
+// un color muy distinto por compañero, en el orden de la lista: rojo, azul, verde, morado, naranja, cian, rosa, marrón, índigo, dorado, gris, lima
+const COLORS = ["#e53935","#1e88e5","#2e7d32","#8e24aa","#f57c00","#00acc1","#d81b60","#8d6e63","#3f51b5","#c79a00","#757575","#7cb342"];
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 let tab="vac", courses=[], assigns=[], editing=null, cview=null, wheelOff=[]; // pestaña Cursos
 const pending = new Map(); // cambios sin confirmar: id -> {person,date,type|null}
