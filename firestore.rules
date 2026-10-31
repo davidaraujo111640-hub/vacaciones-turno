@@ -23,7 +23,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(['person', 'date', 'type', 'action', 'at'])
         && (request.resource.data.action in ['pide', 'cambia', 'retira']
-            || (request.resource.data.action in ['confirma', 'deniega'] && esLara()));
+            || (request.resource.data.action in ['confirma', 'deniega', 'deshace'] && esLara()));
     }
   }
 }

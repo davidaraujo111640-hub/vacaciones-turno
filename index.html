@@ -159,6 +159,8 @@ body.pending .wrap{padding-bottom:110px}
         <div id="reviewBox" hidden>
           <p class="hint" style="margin:6px 0">Días pedidos pendientes de confirmar:</p>
           <div class="list" id="reviewList"></div>
+          <p class="hint" style="margin:14px 0 6px">Decisiones recientes (por si te equivocas):</p>
+          <div class="list" id="recentList"></div>
           <button class="linkbtn" id="logoutBtn" type="button" style="margin-top:10px">Cerrar sesión</button>
         </div>
       </section>
@@ -250,8 +252,8 @@ function renderSide(){
   const log=document.getElementById("log"); log.replaceChildren();
   const L=[...logs].sort((a,b)=>b.at-a.at).filter(l=>!sel||l.person===sel).slice(0,60);
   if(!L.length) log.append(el("p",{className:"hint"},"Aquí aparecerá quién pide o retira cada día."));
-  const VERB={pide:"Pide ",cambia:"Cambia ",retira:"Retira ",confirma:"Confirmado ",deniega:"Denegado "};
-  L.forEach(l=>{const d=el("div",{className:l.action==="deniega"?"deny":""});d.append(el("span",{className:l.action==="pide"?"add":l.action==="confirma"?"conf":"rm"},VERB[l.action]||"· "),document.createTextNode(`${pName(l.person)} · ${fmt(l.date)}${l.type?" · "+typeName(l):""}`),el("time",{},new Date(l.at).toLocaleString("es-ES")+(l.action==="confirma"||l.action==="deniega"?" · por Lara":"")));log.append(d);});
+  const VERB={pide:"Pide ",cambia:"Cambia ",retira:"Retira ",confirma:"Confirmado ",deniega:"Denegado ",deshace:"Deshecho "};
+  L.forEach(l=>{const d=el("div",{className:l.action==="deniega"?"deny":""});d.append(el("span",{className:l.action==="pide"?"add":l.action==="confirma"?"conf":"rm"},VERB[l.action]||"· "),document.createTextNode(`${pName(l.person)} · ${fmt(l.date)}${l.type?" · "+typeName(l):""}`),el("time",{},new Date(l.at).toLocaleString("es-ES")+(["confirma","deniega","deshace"].includes(l.action)?" · por Lara":"")));log.append(d);});
   renderReview();
 }
 function renderAll(){renderPeople();renderCal();renderSide();}
@@ -303,12 +305,37 @@ function renderReview(){
   if(!admin) return;
   const box=document.getElementById("reviewList"); box.replaceChildren();
   const pend=reqs.filter(r=>!isOk(r)).sort((a,b)=>a.date.localeCompare(b.date)||pName(a.person).localeCompare(pName(b.person)));
+  renderRecent();
   if(!pend.length){box.append(el("p",{className:"hint"},"No hay días pendientes de revisar."));return;}
   pend.forEach(r=>{
     const row=el("div",{className:"rev"}); row.append(el("span",{},`${pName(r.person)} · ${fmt(r.date)} · ${typeName(r)}`));
     const a=el("div",{className:"acts"}), ok=el("button",{className:"btn sm okb",type:"button"},"Confirmar"), no=el("button",{className:"btn sm nob",type:"button"},"Denegar");
     ok.onclick=()=>decide(r,true,ok); no.onclick=()=>decide(r,false,no); a.append(ok,no); row.append(a); box.append(row);
   });
+}
+function renderRecent(){
+  const box=document.getElementById("recentList"); box.replaceChildren();
+  const dec=logs.filter(l=>l.action==="confirma"||l.action==="deniega").sort((a,b)=>b.at-a.at).slice(0,10);
+  if(!dec.length){box.append(el("p",{className:"hint"},"Aún no has confirmado ni denegado ningún día."));return;}
+  dec.forEach(l=>{
+    const id=`${l.person}_${l.date}`, r=reqs.find(x=>x.id===id);
+    const undone=logs.some(u=>u.action==="deshace"&&u.person===l.person&&u.date===l.date&&u.at>l.at);
+    const canUndo=!undone&&(l.action==="confirma"?(r&&isOk(r)):!r);
+    const row=el("div",{className:"rev"});
+    row.append(el("span",{},`${l.action==="confirma"?"✓":"✕"} ${pName(l.person)} · ${fmt(l.date)} · ${typeName(l)}`));
+    if(canUndo){const b=el("button",{className:"btn sm ghost",type:"button"},"Deshacer");b.onclick=()=>undo(l,r,b);row.append(b);}
+    else row.append(el("span",{className:"hint"},undone?"deshecho":"ya cambiado"));
+    box.append(row);
+  });
+}
+async function undo(l,r,btn){
+  btn.disabled=true;
+  try{
+    if(l.action==="confirma") await db.doc(`confirmed/${r.id}`).delete();
+    else await db.doc(`requests/${l.person}_${l.date}`).set({person:l.person,date:l.date,type:l.type||"V",at:Date.now()});
+    await db.collection("log").doc().set({person:l.person,date:l.date,type:l.type||"V",action:"deshace",at:Date.now()});
+    toast(l.action==="confirma"?`Confirmación deshecha: ${pName(l.person)} vuelve a estar pendiente`:`Denegación deshecha: el día de ${pName(l.person)} vuelve al calendario`);
+  }catch(e){btn.disabled=false;toast("No se pudo deshacer: "+(e.code||e.message));}
 }
 async function decide(r,yes,btn){
   if(!yes&&btn.dataset.armed!=="1"){btn.dataset.armed="1";btn.textContent="¿Seguro?";setTimeout(()=>{btn.dataset.armed="";btn.textContent="Denegar";},3000);return;}
