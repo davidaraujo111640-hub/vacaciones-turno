@@ -69,6 +69,13 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .tag{font-size:.68rem;padding:1px 5px;border-radius:4px;color:#fff;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tag:not([data-t="V"]){background-image:repeating-linear-gradient(45deg,transparent 0 4px,rgba(255,255,255,.28) 4px 8px)}
 .tag:not([data-t="V"])::after{content:" · " attr(data-t);font-weight:700}
+.tag.pend{outline:2px dashed var(--fg);outline-offset:-2px;opacity:.75}
+.tag.gone{text-decoration:line-through;opacity:.45}
+.day.haspend{border-color:var(--fg);border-style:dashed}
+.confirm{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.12);padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.confirm .btn{font-size:1rem;padding:10px 18px}
+body.pending .wrap{padding-bottom:110px}
+.toast{z-index:6}
 .count{font-size:.7rem;color:var(--muted)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:.85rem;margin-top:12px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
@@ -88,7 +95,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 <div class="wrap">
   <header>
     <div class="top"><h1>Vacaciones del Turno</h1><button class="btn ghost" id="themeBtn" type="button"></button></div>
-    <p class="sub">Cadencia 6 tardes · 6 libres · 6 mañanas · 6 libres, desde el 5 de noviembre de 2026. Elige tu nombre y el tipo de día (vacaciones, AP, Navidad, Semana Santa u otro) y pulsa un día de trabajo para pedirlo. Vuelve a pulsarlo para retirarlo.</p>
+    <p class="sub">Cadencia 6 tardes · 6 libres · 6 mañanas · 6 libres, desde el 5 de noviembre de 2026. Elige tu nombre y el tipo de día (vacaciones, AP, Navidad, Semana Santa u otro) y pulsa los días que quieras. Vuelve a pulsar uno para quitarlo y, al terminar, pulsa Confirmar días.</p>
   </header>
 
   <div class="bar">
@@ -116,12 +123,18 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
     </aside>
   </div>
 </div>
+<div class="confirm" id="confirmBar" hidden>
+  <span id="pendText"></span>
+  <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
+  <button class="btn" id="confirmBtn" type="button">Confirmar días</button>
+</div>
 <div class="toast" id="toast" hidden></div>
 
 <script>
 const START = Date.UTC(2026,10,5); // 5 nov 2026, primer día de tardes
 const COLORS = ["#c0392b","#2471a3","#1e8449","#8e44ad","#d35400","#117a65","#b7950b","#a93226","#5b2c6f","#1a5276","#7d6608","#943126"];
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const pending = new Map(); // cambios sin confirmar: id -> {person,date,type|null}
 let people = [], reqs = [], logs = [], sel = null, db = null;
 let view = (()=>{const d=new Date();return d<new Date(2026,10,1)?{y:2026,m:10}:{y:d.getFullYear(),m:d.getMonth()}})();
 try{ sel = localStorage.getItem("vt-sel"); }catch(e){}
@@ -149,7 +162,7 @@ function renderPeople(){
   const dot=document.getElementById("whoDot"); dot.hidden=!sel; if(sel) dot.style.background=pColor(sel);
 }
 document.getElementById("who").onchange=e=>setSel(e.target.value||null);
-function setSel(id){sel=id;try{id?localStorage.setItem("vt-sel",id):localStorage.removeItem("vt-sel")}catch(e){}renderAll();}
+function setSel(id){if(pending.size){pending.clear();toast("Cambios sin confirmar descartados");}sel=id;try{id?localStorage.setItem("vt-sel",id):localStorage.removeItem("vt-sel")}catch(e){}renderAll();}
 
 function renderCal(){
   const {y,m}=view; document.getElementById("month").textContent=`${MONTHS[m]} ${y}`;
@@ -164,7 +177,10 @@ function renderCal(){
     const head=el("div",{className:"dn"}); head.append(el("span",{},d),el("span",{className:"sh"},s==="T"?"Tarde":s==="M"?"Mañana":"Libre"));
     cell.append(head);
     const here=reqs.filter(r=>r.date===k), tags=el("div",{className:"tags"});
-    here.filter(r=>!sel||r.person===sel).forEach(r=>{const t=el("span",{className:"tag",title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.t=r.type||"V";t.style.background=pColor(r.person);tags.append(t);});
+    const pend=[...pending.values()].filter(q=>q.date===k);
+    if(pend.length) cell.classList.add("haspend");
+    here.filter(r=>!sel||r.person===sel).forEach(r=>{const q=pending.get(r.id);if(q&&q.type)return;const t=el("span",{className:"tag"+(q?" gone":""),title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.t=r.type||"V";t.style.background=pColor(r.person);tags.append(t);});
+    pend.filter(q=>q.type).forEach(q=>{const t=el("span",{className:"tag pend",title:`${pName(q.person)} · ${typeName(q)} (sin confirmar)`},pName(q.person));t.dataset.t=q.type;t.style.background=pColor(q.person);tags.append(t);});
     cell.append(tags);
     if(sel&&here.length>1) cell.append(el("span",{className:"count"},`${here.length} piden este día`));
     if(work){cell.onclick=()=>toggle(k);cell.setAttribute("aria-label",`${d} ${MONTHS[m]}, ${s==="T"?"tarde":"mañana"}, ${here.length} peticiones`);}
@@ -192,25 +208,45 @@ function renderSide(){
 }
 function renderAll(){renderPeople();renderCal();renderSide();}
 
-async function toggle(k){
+function toggle(k){
   if(!sel){toast("Primero elige tu nombre en el desplegable");return;}
-  if(!db){toast("Sin conexión con los datos compartidos");return;}
   const id=`${sel}_${k}`, cur=reqs.find(r=>r.id===id), type=document.getElementById("kind").value;
-  const label=typeName({type});
-  try{
-    if(cur && (cur.type||"V")===type){ await removeReq(cur); return; }
-    await db.doc(`requests/${id}`).set({person:sel,date:k,type,at:Date.now()});
-    await db.collection("log").doc().set({person:sel,date:k,type,action:cur?"cambia":"pide",at:Date.now()});
-    toast(cur?`${fmt(k)} cambiado a ${label}`:`Pedido ${fmt(k)} como ${label}`);
-  }catch(e){toast("No se pudo guardar: "+(e.message||e.code||"error"));}
+  const curType=cur?(cur.type||"V"):null, eff=pending.has(id)?pending.get(id).type:curType;
+  const want=eff===type?null:type;
+  if(want===curType) pending.delete(id); else pending.set(id,{person:sel,date:k,type:want});
+  renderAll(); renderPending();
 }
-async function removeReq(r){
-  try{
-    await db.doc(`requests/${r.id}`).delete();
-    await db.collection("log").doc().set({person:r.person,date:r.date,type:r.type||"V",action:"retira",at:Date.now()});
-    toast(`Retirado ${fmt(r.date)}`);
-  }catch(e){toast("No se pudo guardar: "+(e.message||e.code||"error"));}
+function removeReq(r){ pending.set(r.id,{person:r.person,date:r.date,type:null}); renderAll(); renderPending(); }
+function renderPending(){
+  const bar=document.getElementById("confirmBar"), n=pending.size;
+  bar.hidden=!n; document.body.classList.toggle("pending",n>0);
+  if(!n) return;
+  const add=[...pending.values()].filter(q=>q.type).length;
+  document.getElementById("pendText").textContent=`${n} cambio${n>1?"s":""} sin confirmar (${add} pedido${add===1?"":"s"}, ${n-add} retirado${n-add===1?"":"s"})`;
 }
+document.getElementById("cancelBtn").onclick=()=>{pending.clear();renderAll();renderPending();toast("Cambios descartados");};
+document.getElementById("confirmBtn").onclick=async e=>{
+  if(!db){toast("Sin conexión con los datos compartidos");return;}
+  const btn=e.currentTarget; btn.disabled=true; btn.textContent="Guardando…";
+  let okN=0;
+  for(const [id,q] of [...pending]){
+    const cur=reqs.find(r=>r.id===id);
+    try{
+      if(q.type){
+        await db.doc(`requests/${id}`).set({person:q.person,date:q.date,type:q.type,at:Date.now()});
+        await db.collection("log").doc().set({person:q.person,date:q.date,type:q.type,action:cur?"cambia":"pide",at:Date.now()});
+      }else{
+        await db.doc(`requests/${id}`).delete();
+        await db.collection("log").doc().set({person:q.person,date:q.date,type:cur?(cur.type||"V"):"V",action:"retira",at:Date.now()});
+      }
+      pending.delete(id); okN++;
+    }catch(err){ toast("No se pudo guardar algún día: "+(err.message||err.code)); }
+  }
+  btn.disabled=false; btn.textContent="Confirmar días";
+  renderAll(); renderPending();
+  if(!pending.size) toast(`${okN} cambio${okN>1?"s":""} guardado${okN>1?"s":""}`);
+};
+window.addEventListener("beforeunload",e=>{if(pending.size){e.preventDefault();e.returnValue="";}});
 document.getElementById("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}renderCal();};
 document.getElementById("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal();};
 renderAll();
