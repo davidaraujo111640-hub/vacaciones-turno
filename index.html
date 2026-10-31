@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Vacaciones del Turno</title>
+<title>V.T.</title>
 <meta name="theme-color" content="#1f6f5c">
 <script>try{const t=localStorage.getItem("vt-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Vacaciones">
+<meta name="apple-mobile-web-app-title" content="V.T.">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -51,6 +51,7 @@ input{font:inherit;padding:6px 10px;border:1.5px solid var(--line);border-radius
 .main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
 @media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.brand{display:flex;align-items:center;gap:12px}.brand img{height:68px;width:auto;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}.tagline{color:var(--muted);font-size:.9rem}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .calhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .calhead h2{text-transform:capitalize;font-size:1.3rem}
@@ -94,7 +95,7 @@ body.pending .wrap{padding-bottom:110px}
 
 <div class="wrap">
   <header>
-    <div class="top"><h1>Vacaciones del Turno</h1><button class="btn ghost" id="themeBtn" type="button"></button></div>
+    <div class="top"><div class="brand"><img src="logo.png" alt="Escudo G.O.R. Ciudad Lineal" width="54" height="68"><div><h1>V.T.</h1><span class="tagline">Vacaciones del turno</span></div></div><button class="btn ghost" id="themeBtn" type="button"></button></div>
     <p class="sub">Cadencia 6 tardes · 6 libres · 6 mañanas · 6 libres, desde el 5 de noviembre de 2026. Elige tu nombre y el tipo de día (vacaciones, AP, Navidad, Semana Santa u otro) y pulsa los días que quieras. Vuelve a pulsar uno para quitarlo y, al terminar, pulsa Confirmar días.</p>
   </header>
 
