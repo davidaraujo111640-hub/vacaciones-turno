@@ -14,6 +14,7 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
@@ -93,6 +94,18 @@ body.pending .wrap{padding-bottom:110px}
 .stat:last-child{border-bottom:0}
 .stat b{font-variant-numeric:tabular-nums}
 .list{max-height:320px;overflow:auto;display:grid;gap:6px;font-size:.88rem}
+.tag.ok{box-shadow:0 0 0 2px var(--ok);font-weight:700}
+.tag.ok::before{content:"✓ "}
+.okmark{color:var(--ok);font-weight:700}
+.log .deny{display:block;background:color-mix(in srgb,var(--danger) 14%,transparent);border-left:4px solid var(--danger);border-radius:6px;padding:6px 8px}
+.log .conf{color:var(--ok);font-weight:700}
+.rev{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rev .acts{display:flex;gap:6px}
+.btn.okb{background:var(--ok)}.btn.nob{background:var(--danger)}
+.btn.sm{padding:5px 10px;font-size:.85rem}
+.login{display:grid;gap:8px;margin-top:8px}
+.login input{width:100%}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:.85rem;padding:0}
 .log .add{color:var(--ok);font-weight:700}.log .rm{color:var(--danger);font-weight:700}
 .log time{color:var(--muted);font-size:.78rem;display:block}
 .hint{color:var(--muted);font-size:.88rem}
@@ -113,6 +126,7 @@ body.pending .wrap{padding-bottom:110px}
     <label for="kind" style="font-weight:700">Tipo de día</label>
     <select id="kind"><option value="V">Vacaciones</option><option value="AP">AP (asuntos propios)</option><option value="NAV">Navidad</option><option value="SS">Semana Santa</option><option value="OTRO">Otro</option></select>
     <span class="hint" id="status">Conectando…</span>
+    <button class="linkbtn" id="adminBtn" type="button">Acceso Lara</button>
   </div>
 
   <div class="main">
@@ -126,6 +140,19 @@ body.pending .wrap{padding-bottom:110px}
       <div class="legend"><span><i style="background:var(--tarde-bg);border:1px solid var(--tarde)"></i>Tarde</span><span><i style="background:var(--manana-bg);border:1px solid var(--manana)"></i>Mañana</span><span><i style="background:var(--libre-bg);border:1px solid var(--line)"></i>Libre</span></div>
     </section>
     <aside class="side">
+      <section class="card" id="adminCard" hidden>
+        <h2>Revisión de días (Lara)</h2>
+        <form class="login" id="loginForm" hidden>
+          <input id="loginEmail" type="email" autocomplete="username" placeholder="Email de Lara" aria-label="Email">
+          <input id="loginPass" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña">
+          <button class="btn" type="submit">Entrar</button>
+        </form>
+        <div id="reviewBox" hidden>
+          <p class="hint" style="margin:6px 0">Días pedidos pendientes de confirmar:</p>
+          <div class="list" id="reviewList"></div>
+          <button class="linkbtn" id="logoutBtn" type="button" style="margin-top:10px">Cerrar sesión</button>
+        </div>
+      </section>
       <section class="card"><h2 id="sumTitle">Días pedidos</h2><div id="summary" style="margin-top:8px"></div></section>
       <section class="card"><h2>Historial</h2><div class="list log" id="log" style="margin-top:8px"></div></section>
     </aside>
@@ -143,6 +170,8 @@ const START = Date.UTC(2026,10,5); // 5 nov 2026, primer día de tardes
 const COLORS = ["#c0392b","#2471a3","#1e8449","#8e44ad","#d35400","#117a65","#b7950b","#a93226","#5b2c6f","#1a5276","#7d6608","#943126"];
 const MONTHS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const pending = new Map(); // cambios sin confirmar: id -> {person,date,type|null}
+let confirmed = {}, admin = null;
+const isOk = r => !!confirmed[r.id] && confirmed[r.id].reqAt===r.at;
 let people = [], reqs = [], logs = [], sel = null, db = null;
 let view = (()=>{const d=new Date();return d<new Date(2026,10,1)?{y:2026,m:10}:{y:d.getFullYear(),m:d.getMonth()}})();
 try{ sel = localStorage.getItem("vt-sel"); }catch(e){}
@@ -187,7 +216,7 @@ function renderCal(){
     const here=reqs.filter(r=>r.date===k), tags=el("div",{className:"tags"});
     const pend=[...pending.values()].filter(q=>q.date===k);
     if(pend.length) cell.classList.add("haspend");
-    here.filter(r=>!sel||r.person===sel).forEach(r=>{const q=pending.get(r.id);if(q&&q.type)return;const t=el("span",{className:"tag"+(q?" gone":""),title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.t=r.type||"V";t.style.background=pColor(r.person);tags.append(t);});
+    here.filter(r=>!sel||r.person===sel).forEach(r=>{const q=pending.get(r.id);if(q&&q.type)return;const t=el("span",{className:"tag"+(q?" gone":"")+(isOk(r)?" ok":""),title:`${pName(r.person)} · ${typeName(r)}`},pName(r.person));t.dataset.t=r.type||"V";t.style.background=pColor(r.person);tags.append(t);});
     pend.filter(q=>q.type).forEach(q=>{const t=el("span",{className:"tag pend",title:`${pName(q.person)} · ${typeName(q)} (sin confirmar)`},pName(q.person));t.dataset.t=q.type;t.style.background=pColor(q.person);tags.append(t);});
     cell.append(tags);
     if(sel&&here.length>1) cell.append(el("span",{className:"count"},`${here.length} piden este día`));
@@ -203,7 +232,7 @@ function renderSide(){
     const mine=reqs.filter(r=>r.person===sel).sort((a,b)=>a.date.localeCompare(b.date));
     sum.append(el("div",{className:"stat"},`Total: ${mine.length} días (${tally(mine)})`));
     if(!mine.length) sum.append(el("p",{className:"hint"},"No tiene días pedidos. Pulsa un día de trabajo en el calendario."));
-    mine.forEach(r=>{const [Y,M,D]=r.date.split("-").map(Number);const row=el("div",{className:"stat"});row.append(el("span",{},`${fmt(r.date)} · ${shift(Y,M-1,D)==="T"?"tarde":"mañana"} · ${typeName(r)}`));const x=el("button",{className:"del"},"Retirar");x.onclick=()=>removeReq(r);row.append(x);sum.append(row);});
+    mine.forEach(r=>{const [Y,M,D]=r.date.split("-").map(Number);const row=el("div",{className:"stat"});row.append(el("span",{},`${fmt(r.date)} · ${shift(Y,M-1,D)==="T"?"tarde":"mañana"} · ${typeName(r)}`));if(isOk(r))row.firstChild.append(el("span",{className:"okmark"}," ✓ confirmado"));const x=el("button",{className:"del"},"Retirar");x.onclick=()=>removeReq(r);row.append(x);sum.append(row);});
   }else{
     document.getElementById("sumTitle").textContent="Días pedidos";
     if(!people.length) sum.append(el("p",{className:"hint"},"Cargando la lista del turno…"));
@@ -212,7 +241,9 @@ function renderSide(){
   const log=document.getElementById("log"); log.replaceChildren();
   const L=[...logs].sort((a,b)=>b.at-a.at).filter(l=>!sel||l.person===sel).slice(0,60);
   if(!L.length) log.append(el("p",{className:"hint"},"Aquí aparecerá quién pide o retira cada día."));
-  L.forEach(l=>{const d=el("div");d.append(el("span",{className:l.action==="pide"?"add":"rm"},l.action==="pide"?"Pide ":l.action==="cambia"?"Cambia ":"Retira "),document.createTextNode(`${pName(l.person)} · ${fmt(l.date)}${l.type?" · "+typeName(l):""}`),el("time",{},new Date(l.at).toLocaleString("es-ES")));log.append(d);});
+  const VERB={pide:"Pide ",cambia:"Cambia ",retira:"Retira ",confirma:"Confirmado ",deniega:"Denegado "};
+  L.forEach(l=>{const d=el("div",{className:l.action==="deniega"?"deny":""});d.append(el("span",{className:l.action==="pide"?"add":l.action==="confirma"?"conf":"rm"},VERB[l.action]||"· "),document.createTextNode(`${pName(l.person)} · ${fmt(l.date)}${l.type?" · "+typeName(l):""}`),el("time",{},new Date(l.at).toLocaleString("es-ES")+(l.action==="confirma"||l.action==="deniega"?" · por Lara":"")));log.append(d);});
+  renderReview();
 }
 function renderAll(){renderPeople();renderCal();renderSide();}
 
@@ -255,6 +286,36 @@ document.getElementById("confirmBtn").onclick=async e=>{
   if(!pending.size) toast(`${okN} cambio${okN>1?"s":""} guardado${okN>1?"s":""}`);
 };
 window.addEventListener("beforeunload",e=>{if(pending.size){e.preventDefault();e.returnValue="";}});
+function renderReview(){
+  document.getElementById("loginForm").hidden=!!admin;
+  document.getElementById("reviewBox").hidden=!admin;
+  if(!admin) return;
+  const box=document.getElementById("reviewList"); box.replaceChildren();
+  const pend=reqs.filter(r=>!isOk(r)).sort((a,b)=>a.date.localeCompare(b.date)||pName(a.person).localeCompare(pName(b.person)));
+  if(!pend.length){box.append(el("p",{className:"hint"},"No hay días pendientes de revisar."));return;}
+  pend.forEach(r=>{
+    const row=el("div",{className:"rev"}); row.append(el("span",{},`${pName(r.person)} · ${fmt(r.date)} · ${typeName(r)}`));
+    const a=el("div",{className:"acts"}), ok=el("button",{className:"btn sm okb",type:"button"},"Confirmar"), no=el("button",{className:"btn sm nob",type:"button"},"Denegar");
+    ok.onclick=()=>decide(r,true,ok); no.onclick=()=>decide(r,false,no); a.append(ok,no); row.append(a); box.append(row);
+  });
+}
+async function decide(r,yes,btn){
+  if(!yes&&btn.dataset.armed!=="1"){btn.dataset.armed="1";btn.textContent="¿Seguro?";setTimeout(()=>{btn.dataset.armed="";btn.textContent="Denegar";},3000);return;}
+  btn.disabled=true;
+  try{
+    if(yes){ await db.doc(`confirmed/${r.id}`).set({reqAt:r.at,at:Date.now()}); }
+    else{ await db.doc(`requests/${r.id}`).delete(); if(confirmed[r.id]) await db.doc(`confirmed/${r.id}`).delete(); }
+    await db.collection("log").doc().set({person:r.person,date:r.date,type:r.type||"V",action:yes?"confirma":"deniega",at:Date.now()});
+    toast(yes?`Confirmado: ${pName(r.person)} ${fmt(r.date)}`:`Denegado: ${pName(r.person)} ${fmt(r.date)}`);
+  }catch(e){btn.disabled=false;toast("No tienes permiso o no se pudo guardar: "+(e.code||e.message));}
+}
+document.getElementById("adminBtn").onclick=()=>{const c=document.getElementById("adminCard");c.hidden=!c.hidden;renderReview();if(!c.hidden)c.scrollIntoView({behavior:"smooth"});};
+document.getElementById("loginForm").onsubmit=async e=>{
+  e.preventDefault();
+  try{ await firebase.auth().signInWithEmailAndPassword(document.getElementById("loginEmail").value.trim(),document.getElementById("loginPass").value); document.getElementById("loginPass").value=""; }
+  catch(err){ toast("Email o contraseña incorrectos"); }
+};
+document.getElementById("logoutBtn").onclick=()=>firebase.auth().signOut();
 document.getElementById("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}renderCal();};
 document.getElementById("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal();};
 renderAll();
@@ -282,6 +343,8 @@ renderAll();
   const err=e=>{clearTimeout(timer);st.textContent="Error al cargar: "+(e.message||e.code);};
   db.collection("requests").onSnapshot(s=>{reqs=map(s);ok();renderAll();},err);
   db.collection("log").onSnapshot(s=>{logs=map(s);renderSide();},err);
+  db.collection("confirmed").onSnapshot(s=>{confirmed={};s.docs.forEach(d=>confirmed[d.id]=d.data());renderAll();},err);
+  firebase.auth().onAuthStateChanged(u=>{admin=u;if(u)document.getElementById("adminCard").hidden=false;document.getElementById("adminBtn").textContent=u?"Revisión (Lara)":"Acceso Lara";renderReview();});
 })();
 const themeBtn=document.getElementById("themeBtn");
 const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;};
