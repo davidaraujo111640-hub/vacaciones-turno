@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function esLara() {
-      return request.auth != null && request.auth.uid == 'UID_DE_LARA';
+      return request.auth != null && request.auth.uid == '2iFYWcnlWEQAWwqRqxWOoICzVtm1';
     }
     // Días pedidos: cualquiera puede ver, pedir, cambiar o retirar
     match /requests/{id} {
