@@ -13,7 +13,7 @@ service cloud.firestore {
       allow create, update: if request.resource.data.keys().hasOnly(['person', 'date', 'type', 'at'])
         && request.resource.data.person is string && request.resource.data.person.size() < 30
         && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && request.resource.data.type in ['V26', 'V27', 'AP26', 'AP27', 'NAV', 'SS', 'OTRO'];
+        && request.resource.data.type in ['V26', 'V27', 'AP26', 'AP27', 'NAV', 'SS', 'EXA', 'OTRO'];
     }
     // Días confirmados: todos los ven, solo los responsables confirman
     match /confirmed/{id} {
